@@ -1,17 +1,23 @@
-# books/urls.py
 from django.urls import path
-from . import views
+from .views import RegisterView, LoginView, CreateBook, GetBookByID, GetBookReviews, CreateReview, SearchBooksByTitle, \
+    SearchBooksByAuthor, SearchBooksByGenre, GetTopRatedBooks
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 urlpatterns = [
-    path('search/title/<str:title>/', views.SearchBooksByTitle.as_view(), name='search_books_by_title'),
-    path('search/author/<str:author_name>/', views.SearchBooksByAuthor.as_view(), name='search_books_by_author'),
-    path('search/genre/<str:genre>/', views.SearchBooksByGenre.as_view(), name='search_books_by_genre'),
-    path('book/isbn/<str:isbn_number>/', views.GetBookByISBN.as_view(), name='get_book_by_isbn'),
-    path('book/<int:book_id>/', views.GetBookByID.as_view(), name='get_book_by_id'),
-    path('book/<int:book_id>/reviews/', views.GetBookReviews.as_view(), name='get_book_reviews'),
-    path('book/<int:book_id>/availability/', views.GetBookAvailability.as_view(), name='get_book_availability'),
-    path('search/pub_date/<str:date>/', views.SearchBooksByPublicationDate.as_view(), name='search_books_by_pub_date'),
-    path('search/bestsellers/', views.GetTopRatedBooks.as_view(), name='get_top_rated_books'),
-    path('book/<int:book_id>/summary/', views.GetBookSummary.as_view(), name='get_book_summary'),
-    path('book/', views.CreateBook.as_view(), name='create_book'),
+    # Book-related views
+    path('book/', CreateBook.as_view(), name='create_book'),
+    path('book/<int:book_id>/', GetBookByID.as_view(), name='get_book_by_id'),
+    path('book/<int:book_id>/reviews/', GetBookReviews.as_view(), name='get_book_reviews'),
+    path('book/<int:book_id>/reviews/create/', CreateReview.as_view(), name='create_review'),
+
+    # Search endpoints
+    path('search/title/<str:title>/', SearchBooksByTitle.as_view(), name='search_books_by_title'),
+    path('search/author/<str:author_name>/', SearchBooksByAuthor.as_view(), name='search_books_by_author'),
+    path('search/genre/<str:genre>/', SearchBooksByGenre.as_view(), name='search_books_by_genre'),
+    path('search/bestsellers/', GetTopRatedBooks.as_view(), name='get_top_rated_books'),
+
+    # Authentication-related views
+    path('register/', RegisterView.as_view(), name='register'),  # Custom registration endpoint
+    path('login/', LoginView.as_view(), name='login'),  # Custom login endpoint for JWT
+    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),  # Refresh access token
 ]
