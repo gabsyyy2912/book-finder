@@ -30,8 +30,7 @@ class BookSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Book
-        fields = ['id', 'title', 'author', 'genre', 'isbn', 'publication_date', 'summary', 'page_count', 'language',
-                  'publisher', 'reviews']
+        fields = '__all__'
 
     def create(self, validated_data):
         author_data = validated_data.pop('author', None)
@@ -43,3 +42,35 @@ class BookSerializer(serializers.ModelSerializer):
         # Create and return the book instance
         book = Book.objects.create(**validated_data)
         return book
+
+class BookAvailabilitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Book
+        fields = ['id', 'title', 'is_available']
+
+class BookMetadataSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Book
+        fields = ['title', 'isbn', 'publisher', 'page_count', 'language', 'publication_date']
+
+class AuthorBioSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Author
+        fields = ['name', 'bio']
+
+class AuthorWorksSerializer(serializers.ModelSerializer):
+    books = serializers.StringRelatedField(many=True)
+
+    class Meta:
+        model = Author
+        fields = ['name', 'books']
+
+class BookSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Book
+        fields = ['title', 'summary']  # Returns only the title and summary of a book
+
+class BookPriceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Book
+        fields = ['title', 'isbn', 'price', 'retailer']

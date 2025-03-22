@@ -1,8 +1,8 @@
-from rest_framework import status
+from rest_framework import status, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import Book, Author, Review
-from .serializers import BookSerializer, AuthorSerializer, ReviewSerializer, UserSerializer
+from .serializers import ReviewSerializer, UserSerializer
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -10,6 +10,9 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import authenticate
+from .serializers import (BookSerializer, BookAvailabilitySerializer, AuthorBioSerializer,
+    AuthorWorksSerializer, AuthorWorksSerializer, BookMetadataSerializer, BookSummarySerializer,
+    BookPriceSerializer)
 
 
 class LoginView(APIView):
@@ -61,15 +64,17 @@ class RegisterView(APIView):
         }, status=status.HTTP_201_CREATED)
 
 
-class CreateBook(APIView):
-    def post(self, request):
-        # Pass the data directly to the serializer
-        serializer = BookSerializer(data=request.data)
+class CreateBookView(generics.CreateAPIView):
+    queryset = Book.objects.all()
+    serializer_class = BookSerializer
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
-            # Save the book (author will be handled by the serializer)
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            book = serializer.save()
+
+            # ✅ Ensure the full book details (including age_group) are returned
+            return Response(BookSerializer(book).data, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -128,3 +133,120 @@ class GetTopRatedBooks(APIView):
         books = Book.objects.all().order_by('-id')  # You can customize this to order by rating or other criteria
         serializer = BookSerializer(books, many=True)
         return Response(serializer.data)
+
+class GetBookByISBN(APIView):
+    def get(self, request, isbn_number):
+        book = get_object_or_404(Book, isbn=isbn_number)
+        serializer = BookSerializer(book)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+class GetBookAvailability(APIView):
+    def get(self, request, book_id):
+        book = get_object_or_404(Book, id=book_id)
+        serializer = BookAvailabilitySerializer(book)
+        return Response(serializer.data)
+
+class SearchBooksByPublicationDate(generics.ListAPIView):
+    serializer_class = BookSerializer
+
+    def get_queryset(self):
+        date = self.kwargs['date']
+        return Book.objects.filter(publication_date=date)
+
+# ✅ Search for Award-Winning Books
+class SearchAwardWinningBooks(generics.ListAPIView):
+    serializer_class = BookSerializer
+
+    def get_queryset(self):
+        award_name = self.kwargs['award_name']
+        return Book.objects.filter(awards__icontains=award_name)
+
+# ✅ 5. Get Book Metadata
+class GetBookMetadata(APIView):
+    def get(self, request, book_id):
+        book = get_object_or_404(Book, id=book_id)
+        serializer = BookMetadataSerializer(book)
+        return Response(serializer.data)
+
+# ✅ 6. Get Author's Biography
+class GetAuthorBio(APIView):
+    def get(self, request, author_name):
+        author = get_object_or_404(Author, name=author_name)
+
+        # Ensure 'bio' exists in the response
+        bio = author.bio if author.bio else "Biography not available."
+
+        return Response({"name": author.name, "bio": bio})
+
+# ✅ 7. Get Author's List of Works
+class GetAuthorWorks(APIView):
+    def get(self, request, author_name):
+        author = get_object_or_404(Author, name=author_name)
+        serializer = AuthorWorksSerializer(author)
+        return Response(serializer.data)
+
+# ✅ 8. Get Book Recommendations
+class GetBookRecommendations(APIView):
+    def get(self, request, book_id):
+        book = get_object_or_404(Book, id=book_id)
+        recommendations = Book.objects.filter(genre=book.genre).exclude(id=book.id)[:5]
+        serializer = BookMetadataSerializer(recommendations, many=True)
+        return Response(serializer.data)
+
+# ✅ 9. Search Books by Language
+class SearchBooksByLanguage(generics.ListAPIView):
+    serializer_class = BookMetadataSerializer
+
+    def get_queryset(self):
+        language = self.kwargs['language']
+        return Book.objects.filter(language__icontains=language)
+
+class SearchBooksByPublisher(generics.ListAPIView):
+    serializer_class = BookSerializer
+
+    def get_queryset(self):
+        publisher_name = self.kwargs['publisher_name']
+        return Book.objects.filter(publisher__icontains=publisher_name)
+
+class GetTopRatedBooks(generics.ListAPIView):
+    serializer_class = BookSerializer
+
+    def get_queryset(self):
+        return Book.objects.all().order_by('-rating')[:10]
+
+class GetBookPriceComparison(APIView):
+    def get(self, request, book_id):
+        book = get_object_or_404(Book, id=book_id)
+        serializer = BookPriceSerializer(book)
+        return Response(serializer.data)
+
+class SearchBooksByAgeGroup(generics.ListAPIView):
+    serializer_class = BookSerializer
+
+    def get_queryset(self):
+        age_group = self.kwargs['age_group']
+        return Book.objects.filter(genre__icontains=age_group)
+
+class GetBookSummary(APIView):
+    def get(self, request, book_id):
+        book = get_object_or_404(Book, id=book_id)
+        serializer = BookSummarySerializer(book)
+        return Response(serializer.data)
+
+
+def create(self, request, *args, **kwargs):
+    serializer = self.get_serializer(data=request.data)
+    if serializer.is_valid():
+        book = serializer.save()
+
+        # ✅ Print full book object to confirm it's saved correctly
+        print("Saved Book Object:", book)
+
+        # ✅ Print serialized book data before returning response
+        serialized_data = BookSerializer(book).data
+        print("Serialized Response:", serialized_data)
+
+        return Response(serialized_data, status=status.HTTP_201_CREATED)
+
+    print("Serializer Errors:", serializer.errors)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
